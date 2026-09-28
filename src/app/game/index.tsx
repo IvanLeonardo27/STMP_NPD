@@ -1,0 +1,180 @@
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import GameMap, { PLAYABLE_WIDTH } from '@/components/game/GameMap';
+import SettingsModal from '@/components/game/SettingsModal';
+import { useAuth } from '@/context/AuthContext';
+import { useFlyBonus } from '@/hooks/useFlyBonus';
+import { useFrog } from '@/hooks/useFrog';
+import { useLavaStones } from '@/hooks/useLavaStones';
+import { useLogs } from '@/hooks/useLogs';
+import { useSnake } from '@/hooks/useSnake';
+import { useVehicles } from '@/hooks/useVehicles';
+import { getStoredControlMode, recordScore, storeControlMode } from '@/services/storage';
+import { ControlMode } from '@/types/game';
+
+const TOTAL_GAME_TIME = 120;
+
+export default function GameScreen() {
+  const router = useRouter();
+  const { username } = useAuth();
+  const [score, setScore] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(TOTAL_GAME_TIME);
+  const [frogsSaved, setFrogsSaved] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [controlMode, setControlMode] = useState<ControlMode>('arrows');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const hasRecordedScoreRef = useRef(false);
+
+  // Active countdown timer: runs from 120s down to 0s while game is active
+  useEffect(() => {
+    if (isPaused || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 0.1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return Math.max(0, Math.round((prev - 0.1) * 10) / 10);
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isPaused, timeRemaining <= 0]);
+
+  // Load saved control mode preference
+  useEffect(() => {
+    getStoredControlMode().then((mode) => {
+      setControlMode(mode);
+    });
+  }, []);
+
+  const handleSelectControlMode = async (mode: ControlMode) => {
+    setControlMode(mode);
+    await storeControlMode(mode);
+  };
+
+  const isTimeUp = timeRemaining <= 0;
+
+  // Record score automatically and check if it's a new high score when time runs out
+  useEffect(() => {
+    if (isTimeUp && !hasRecordedScoreRef.current) {
+      hasRecordedScoreRef.current = true;
+      recordScore(username || 'Player', score).then((res) => {
+        if (res.isNewHighScore && score > 0) {
+          setIsNewHighScore(true);
+        }
+      });
+    }
+  }, [isTimeUp, score, username]);
+
+  // Dynamic vehicles moving horizontally across all 3 lanes
+  const vehicles = useVehicles(PLAYABLE_WIDTH, isPaused || isTimeUp);
+
+
+  // Dynamic wood logs floating across 3 river rows with 2-3 logs per stream
+  const logs = useLogs(PLAYABLE_WIDTH, isPaused || isTimeUp);
+
+  // Dynamic bonus fly appearing on wood logs in river zone
+  const { fly, eatenPopup, eatFly } = useFlyBonus(logs, PLAYABLE_WIDTH, isPaused || isTimeUp);
+
+  // Dynamic patrolling snake roaming horizontally and vertically in middle grass
+  const snake = useSnake(PLAYABLE_WIDTH, isPaused || isTimeUp);
+
+  // Dynamic whack-a-mole stepping stones emerging and submerging in lava
+  const lavaStones = useLavaStones({ isPaused: isPaused || isTimeUp });
+
+  // Dynamic frog with 4-way movement, jump animations, keyboard/swipe controls, and failure collisions
+  const { frog, deathReason, goalBanner, hop, resetFrog } = useFrog({
+    playableWidth: PLAYABLE_WIDTH,
+    vehicles,
+    logs,
+    snake,
+    lavaStones,
+    fly,
+    onEatFly: (points) => {
+      const awarded = eatFly();
+      if (awarded) {
+        setScore((prev) => prev + awarded);
+      }
+    },
+    onReachSafeZone: () => {
+      setScore((prev) => prev + 1);
+      setFrogsSaved((prev) => prev + 1);
+    },
+    isPaused: isPaused || isTimeUp,
+    controlMode,
+  });
+
+  const handleRestart = () => {
+    hasRecordedScoreRef.current = false;
+    setIsNewHighScore(false);
+    setScore(0);
+    setTimeRemaining(TOTAL_GAME_TIME);
+    setFrogsSaved(0);
+    setIsPaused(false);
+    resetFrog();
+  };
+
+  return (
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <GameMap
+          score={score}
+          timeRemaining={timeRemaining}
+          totalTime={TOTAL_GAME_TIME}
+          frogsSaved={frogsSaved}
+          isMuted={isMuted}
+          isPaused={isPaused || isTimeUp}
+          vehicles={vehicles}
+          logs={logs}
+          snake={snake}
+          lavaStones={lavaStones}
+          fly={fly}
+          eatenPopup={eatenPopup}
+          frog={frog}
+          deathReason={deathReason}
+          goalBanner={goalBanner}
+          controlMode={controlMode}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onSwipe={hop}
+          onRestart={handleRestart}
+          onOpenHighScores={() => router.push('/highscores' as any)}
+          onMainMenu={() => router.replace('/(main)' as any)}
+          isNewHighScore={isNewHighScore}
+          onToggleSound={() => setIsMuted((prev) => !prev)}
+          onTogglePause={() => setIsPaused((prev) => !prev)}
+        />
+
+
+      </ScrollView>
+
+      {/* Control Mode Settings Modal */}
+      <SettingsModal
+        visible={isSettingsOpen}
+        currentMode={controlMode}
+        onSelectMode={handleSelectControlMode}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#1b1e22',
+  },
+  scrollContent: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+});
