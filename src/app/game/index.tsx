@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import GameMap, { PLAYABLE_WIDTH } from '@/components/game/GameMap';
@@ -8,6 +8,7 @@ import SettingsModal from '@/components/game/SettingsModal';
 import { useAuth } from '@/context/AuthContext';
 import { useFlyBonus } from '@/hooks/useFlyBonus';
 import { useFrog } from '@/hooks/useFrog';
+import { useGameSound } from '@/hooks/useGameSound';
 import { useLavaStones } from '@/hooks/useLavaStones';
 import { useLogs } from '@/hooks/useLogs';
 import { useSnake } from '@/hooks/useSnake';
@@ -24,6 +25,7 @@ export default function GameScreen() {
   const [timeRemaining, setTimeRemaining] = useState(TOTAL_GAME_TIME);
   const [frogsSaved, setFrogsSaved] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const { playJump, playBonus, playDrown, playDeath, playWin, playTimeUp, playLava, playHighScore, playSquash, playSnake } = useGameSound(isMuted);
   const [isPaused, setIsPaused] = useState(false);
   const [controlMode, setControlMode] = useState<ControlMode>('arrows');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -68,10 +70,13 @@ export default function GameScreen() {
       recordScore(username || 'Player', score).then((res) => {
         if (res.isNewHighScore && score > 0) {
           setIsNewHighScore(true);
+          playHighScore();
+        } else {
+          playTimeUp();
         }
       });
     }
-  }, [isTimeUp, score, username]);
+  }, [isTimeUp, score, username, playTimeUp, playHighScore]);
 
   // Dynamic vehicles moving horizontally across all 3 lanes
   const vehicles = useVehicles(PLAYABLE_WIDTH, isPaused || isTimeUp);
@@ -100,12 +105,28 @@ export default function GameScreen() {
     onEatFly: (points) => {
       const awarded = eatFly();
       if (awarded) {
+        playBonus();
         setScore((prev) => prev + awarded);
       }
     },
     onReachSafeZone: () => {
+      playWin();
       setScore((prev) => prev + 1);
       setFrogsSaved((prev) => prev + 1);
+    },
+    onHop: playJump,
+    onDie: (cause) => {
+      if (cause === 'squashed') {
+        playSquash();
+      } else if (cause === 'eaten') {
+        playSnake();
+      } else if (cause === 'drowned') {
+        playDrown();
+      } else if (cause === 'burned') {
+        playLava();
+      } else {
+        playDeath();
+      }
     },
     isPaused: isPaused || isTimeUp,
     controlMode,

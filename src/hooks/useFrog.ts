@@ -26,6 +26,8 @@ export interface UseFrogOptions {
   fly?: FlyBonusEntity | null;
   onEatFly?: (points: number) => void;
   onReachSafeZone?: () => void;
+  onHop?: () => void;
+  onDie?: (cause: 'squashed' | 'eaten' | 'burned' | 'drowned') => void;
   isPaused?: boolean;
   controlMode?: ControlMode;
 }
@@ -39,6 +41,8 @@ export function useFrog({
   fly = null,
   onEatFly,
   onReachSafeZone,
+  onHop,
+  onDie,
   isPaused = false,
   controlMode = 'arrows',
 }: UseFrogOptions) {
@@ -67,25 +71,26 @@ export function useFrog({
   });
 
   const vehiclesRef = useRef(vehicles);
-  vehiclesRef.current = vehicles;
-
   const logsRef = useRef(logs);
-  logsRef.current = logs;
-
   const lavaStonesRef = useRef(lavaStones);
-  lavaStonesRef.current = lavaStones;
-
   const snakeRef = useRef(snake);
-  snakeRef.current = snake;
-
   const flyRef = useRef(fly);
-  flyRef.current = fly;
-
   const onEatFlyRef = useRef(onEatFly);
-  onEatFlyRef.current = onEatFly;
-
   const onReachSafeZoneRef = useRef(onReachSafeZone);
-  onReachSafeZoneRef.current = onReachSafeZone;
+  const onHopRef = useRef(onHop);
+  const onDieRef = useRef(onDie);
+
+  useEffect(() => {
+    vehiclesRef.current = vehicles;
+    logsRef.current = logs;
+    lavaStonesRef.current = lavaStones;
+    snakeRef.current = snake;
+    flyRef.current = fly;
+    onEatFlyRef.current = onEatFly;
+    onReachSafeZoneRef.current = onReachSafeZone;
+    onHopRef.current = onHop;
+    onDieRef.current = onDie;
+  });
 
   const isGoalCelebratingRef = useRef<boolean>(false);
 
@@ -114,6 +119,7 @@ export function useFrog({
       };
       frogRef.current = deadState;
       setFrog(deadState);
+      onDieRef.current?.(cause);
 
       if (respawnTimerRef.current) clearTimeout(respawnTimerRef.current);
 
@@ -173,6 +179,7 @@ export function useFrog({
       };
       frogRef.current = hoppingState;
       setFrog(hoppingState);
+      onHopRef.current?.();
 
       if (isJumpingTimerRef.current) clearTimeout(isJumpingTimerRef.current);
       isJumpingTimerRef.current = setTimeout(() => {
