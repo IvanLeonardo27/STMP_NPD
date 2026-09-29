@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import GameMap, { PLAYABLE_WIDTH } from '@/components/game/GameMap';
 import SettingsModal from '@/components/game/SettingsModal';
+import TutorialModal from '@/components/game/TutorialModal';
 import { useAuth } from '@/context/AuthContext';
 import { useFlyBonus } from '@/hooks/useFlyBonus';
 import { useFrog } from '@/hooks/useFrog';
@@ -13,7 +14,13 @@ import { useLavaStones } from '@/hooks/useLavaStones';
 import { useLogs } from '@/hooks/useLogs';
 import { useSnake } from '@/hooks/useSnake';
 import { useVehicles } from '@/hooks/useVehicles';
-import { getStoredControlMode, recordScore, storeControlMode } from '@/services/storage';
+import {
+  getStoredControlMode,
+  getStoredTutorialDisabled,
+  recordScore,
+  storeControlMode,
+  storeTutorialDisabled,
+} from '@/services/storage';
 import { ControlMode } from '@/types/game';
 
 const TOTAL_GAME_TIME = 120;
@@ -30,11 +37,26 @@ export default function GameScreen() {
   const [controlMode, setControlMode] = useState<ControlMode>('arrows');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isTutorialChecked, setIsTutorialChecked] = useState(false);
   const hasRecordedScoreRef = useRef(false);
+
+  // Load saved tutorial display preference
+  useEffect(() => {
+    getStoredTutorialDisabled().then((disabled) => {
+      setIsTutorialChecked(true);
+      if (!disabled) {
+        setIsTutorialOpen(true);
+      }
+    });
+  }, []);
+
+  const isTimeUp = timeRemaining <= 0;
+  const isGamePaused = !isTutorialChecked || isTutorialOpen || isPaused || isTimeUp;
 
   // Active countdown timer: runs from 120s down to 0s while game is active
   useEffect(() => {
-    if (isPaused || timeRemaining <= 0) return;
+    if (isGamePaused || timeRemaining <= 0) return;
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -47,7 +69,7 @@ export default function GameScreen() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPaused, timeRemaining <= 0]);
+  }, [isGamePaused, timeRemaining <= 0]);
 
   // Load saved control mode preference
   useEffect(() => {
@@ -60,8 +82,6 @@ export default function GameScreen() {
     setControlMode(mode);
     await storeControlMode(mode);
   };
-
-  const isTimeUp = timeRemaining <= 0;
 
   // Record score automatically and check if it's a new high score when time runs out
   useEffect(() => {
@@ -79,20 +99,20 @@ export default function GameScreen() {
   }, [isTimeUp, score, username, playTimeUp, playHighScore]);
 
   // Dynamic vehicles moving horizontally across all 3 lanes
-  const vehicles = useVehicles(PLAYABLE_WIDTH, isPaused || isTimeUp);
+  const vehicles = useVehicles(PLAYABLE_WIDTH, isGamePaused);
 
 
   // Dynamic wood logs floating across 3 river rows with 2-3 logs per stream
-  const logs = useLogs(PLAYABLE_WIDTH, isPaused || isTimeUp);
+  const logs = useLogs(PLAYABLE_WIDTH, isGamePaused);
 
   // Dynamic bonus fly appearing on wood logs in river zone
-  const { fly, eatenPopup, eatFly } = useFlyBonus(logs, PLAYABLE_WIDTH, isPaused || isTimeUp);
+  const { fly, eatenPopup, eatFly } = useFlyBonus(logs, PLAYABLE_WIDTH, isGamePaused);
 
   // Dynamic patrolling snake roaming horizontally and vertically in middle grass
-  const snake = useSnake(PLAYABLE_WIDTH, isPaused || isTimeUp);
+  const snake = useSnake(PLAYABLE_WIDTH, isGamePaused);
 
   // Dynamic whack-a-mole stepping stones emerging and submerging in lava
-  const lavaStones = useLavaStones({ isPaused: isPaused || isTimeUp });
+  const lavaStones = useLavaStones({ isPaused: isGamePaused });
 
   // Dynamic frog with 4-way movement, jump animations, keyboard/swipe controls, and failure collisions
   const { frog, deathReason, goalBanner, hop, resetFrog } = useFrog({
@@ -128,9 +148,16 @@ export default function GameScreen() {
         playDeath();
       }
     },
-    isPaused: isPaused || isTimeUp,
+    isPaused: isGamePaused,
     controlMode,
   });
+
+  const handleStartGame = async (dontShowAgain: boolean) => {
+    setIsTutorialOpen(false);
+    if (dontShowAgain) {
+      await storeTutorialDisabled(true);
+    }
+  };
 
   const handleRestart = () => {
     hasRecordedScoreRef.current = false;
@@ -154,7 +181,7 @@ export default function GameScreen() {
           totalTime={TOTAL_GAME_TIME}
           frogsSaved={frogsSaved}
           isMuted={isMuted}
-          isPaused={isPaused || isTimeUp}
+          isPaused={isGamePaused}
           vehicles={vehicles}
           logs={logs}
           snake={snake}
@@ -166,6 +193,7 @@ export default function GameScreen() {
           goalBanner={goalBanner}
           controlMode={controlMode}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenTutorial={() => setIsTutorialOpen(true)}
           onSwipe={hop}
           onRestart={handleRestart}
           onOpenHighScores={() => router.push('/highscores' as any)}
@@ -184,6 +212,14 @@ export default function GameScreen() {
         currentMode={controlMode}
         onSelectMode={handleSelectControlMode}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Tutorial Modal */}
+      <TutorialModal
+        visible={isTutorialOpen}
+        controlMode={controlMode}
+        onStartGame={handleStartGame}
+        onClose={() => setIsTutorialOpen(false)}
       />
     </SafeAreaView>
   );

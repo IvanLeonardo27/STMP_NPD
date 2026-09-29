@@ -35,6 +35,28 @@ interface StoneInternalState {
   shakeOffset: number;
 }
 
+const INITIAL_INTERNAL_STATES: StoneInternalState[] = [
+  { id: 'bridge-left-0', state: 'emerged', stateTimer: 3400, scale: 1, shakeOffset: 0 },
+  { id: 'bridge-left-1', state: 'submerged', stateTimer: 1400, scale: 0, shakeOffset: 0 },
+  { id: 'bridge-left-2', state: 'emerged', stateTimer: 4200, scale: 1, shakeOffset: 0 },
+  { id: 'bridge-mid-0', state: 'submerged', stateTimer: 2100, scale: 0, shakeOffset: 0 },
+  { id: 'bridge-mid-1', state: 'emerged', stateTimer: 4800, scale: 1, shakeOffset: 0 },
+  { id: 'bridge-mid-2', state: 'submerged', stateTimer: 1100, scale: 0, shakeOffset: 0 },
+  { id: 'bridge-right-0', state: 'emerged', stateTimer: 4600, scale: 1, shakeOffset: 0 },
+  { id: 'bridge-right-1', state: 'emerged', stateTimer: 2900, scale: 1, shakeOffset: 0 },
+  { id: 'bridge-right-2', state: 'submerged', stateTimer: 1700, scale: 0, shakeOffset: 0 },
+];
+
+const INITIAL_STONES: LavaStoneEntity[] = LAVA_PITS.map((pit) => {
+  const match = INITIAL_INTERNAL_STATES.find((s) => s.id === pit.id);
+  return {
+    ...pit,
+    state: match?.state ?? 'emerged',
+    scale: match?.scale ?? 1,
+    shakeOffset: match?.shakeOffset ?? 0,
+  };
+});
+
 interface UseLavaStonesOptions {
   isPaused?: boolean;
   onStoneSubmerged?: (stoneId: string) => void;
@@ -44,33 +66,15 @@ export function useLavaStones(options: UseLavaStonesOptions = {}) {
   const { isPaused = false, onStoneSubmerged } = options;
 
   // Inisialisasi: fasa acak tanpa urutan (5 batu muncul, 4 tenggelam dengan timer bervariasi)
-  const internalStatesRef = useRef<StoneInternalState[]>([
-    { id: 'bridge-left-0', state: 'emerged', stateTimer: 3400, scale: 1, shakeOffset: 0 },
-    { id: 'bridge-left-1', state: 'submerged', stateTimer: 1400, scale: 0, shakeOffset: 0 },
-    { id: 'bridge-left-2', state: 'emerged', stateTimer: 4200, scale: 1, shakeOffset: 0 },
-    { id: 'bridge-mid-0', state: 'submerged', stateTimer: 2100, scale: 0, shakeOffset: 0 },
-    { id: 'bridge-mid-1', state: 'emerged', stateTimer: 4800, scale: 1, shakeOffset: 0 },
-    { id: 'bridge-mid-2', state: 'submerged', stateTimer: 1100, scale: 0, shakeOffset: 0 },
-    { id: 'bridge-right-0', state: 'emerged', stateTimer: 4600, scale: 1, shakeOffset: 0 },
-    { id: 'bridge-right-1', state: 'emerged', stateTimer: 2900, scale: 1, shakeOffset: 0 },
-    { id: 'bridge-right-2', state: 'submerged', stateTimer: 1700, scale: 0, shakeOffset: 0 },
-  ]);
+  const internalStatesRef = useRef<StoneInternalState[]>(INITIAL_INTERNAL_STATES);
 
-  const [stones, setStones] = useState<LavaStoneEntity[]>(() =>
-    LAVA_PITS.map((pit) => {
-      const match = internalStatesRef.current.find((s) => s.id === pit.id);
-      return {
-        ...pit,
-        state: match?.state ?? 'emerged',
-        scale: match?.scale ?? 1,
-        shakeOffset: match?.shakeOffset ?? 0,
-      };
-    })
-  );
+  const [stones, setStones] = useState<LavaStoneEntity[]>(INITIAL_STONES);
 
-  const lastTimeRef = useRef<number>(Date.now());
+  const lastTimeRef = useRef<number>(0);
   const onStoneSubmergedRef = useRef(onStoneSubmerged);
-  onStoneSubmergedRef.current = onStoneSubmerged;
+  useEffect(() => {
+    onStoneSubmergedRef.current = onStoneSubmerged;
+  }, [onStoneSubmerged]);
 
   useEffect(() => {
     if (isPaused) return;

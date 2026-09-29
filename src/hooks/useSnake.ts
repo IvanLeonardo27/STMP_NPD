@@ -31,7 +31,9 @@ export function useSnake(playableWidth: number, isPaused: boolean = false) {
   });
 
   // Keep stateRef up to date with the latest state
-  stateRef.current.snake = snake;
+  useEffect(() => {
+    stateRef.current.snake = snake;
+  }, [snake]);
 
   useEffect(() => {
     if (isPaused) return;

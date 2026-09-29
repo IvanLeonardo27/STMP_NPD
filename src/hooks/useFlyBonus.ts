@@ -17,11 +17,13 @@ export function useFlyBonus(
 
   const targetLogIdRef = useRef<string | null>(null);
   const spawnTimeRef = useRef<number>(0);
-  const nextSpawnTimeRef = useRef<number>(Date.now() + 4000); // First fly spawns 4s after start
+  const nextSpawnTimeRef = useRef<number>(0);
   const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const logsRef = useRef(logs);
-  logsRef.current = logs;
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   // Function to consume the fly when frog collides with it
   const eatFly = useCallback(() => {
@@ -65,6 +67,9 @@ export function useFlyBonus(
       const currentLogs = logsRef.current;
 
       if (!targetLogIdRef.current) {
+        if (nextSpawnTimeRef.current === 0) {
+          nextSpawnTimeRef.current = now + 4000;
+        }
         // No fly active: check if cooldown elapsed to spawn a new fly
         if (now >= nextSpawnTimeRef.current) {
           const visibleLogs = currentLogs.filter(

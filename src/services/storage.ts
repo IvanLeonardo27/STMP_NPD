@@ -134,3 +134,23 @@ export async function storeControlMode(mode: ControlMode): Promise<void> {
   }
 }
 
+// Tutorial Display Settings
+const TUTORIAL_DISABLED_KEY = 'tutorial_disabled';
+
+export async function getStoredTutorialDisabled(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(TUTORIAL_DISABLED_KEY);
+    return val === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function storeTutorialDisabled(disabled: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(TUTORIAL_DISABLED_KEY, disabled ? 'true' : 'false');
+  } catch (error) {
+    console.error('Error saving tutorial preference to AsyncStorage', error);
+  }
+}
+

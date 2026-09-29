@@ -1,9 +1,7 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,7 +20,7 @@ export default function MainHomeScreen() {
   const [controlMode, setControlMode] = useState<ControlMode>('arrows');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     getStoredControlMode().then(setControlMode);
   }, []);
 
@@ -32,24 +30,7 @@ export default function MainHomeScreen() {
   };
 
   const handlePlayGame = () => {
-    const title = 'Cara Bermain Froggy Crosser';
-    const message =
-      '1. Usap layar (swipe) ke atas, bawah, kiri, dan kanan untuk menggerakkan katak.\n' +
-      '2. Hindari kendaraan di jalan raya (mobil, truk, mobil balap).\n' +
-      '3. Pijak batu di atas zona lava dan melompatlah di atas batang kayu terapung di sungai.\n' +
-      '4. Seberangkan katak sebanyak mungkin ke garis finish sebelum waktu habis!';
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`${title}\n\n${message}\n\nKlik OK untuk mulai bermain!`);
-      if (confirmed) {
-        router.push('/game');
-      }
-    } else {
-      Alert.alert(title, message, [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'OK', onPress: () => router.push('/game') },
-      ]);
-    }
+    router.push('/game');
   };
 
   const handleLogout = async () => {

@@ -1,8 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useMemo } from 'react';
 import {
   Dimensions,
   Image,
-  ImageBackground,
   PanResponder,
   StyleSheet,
   Text,
@@ -70,6 +69,7 @@ interface GameMapProps {
   goalBanner?: string | null;
   controlMode?: ControlMode;
   onOpenSettings?: () => void;
+  onOpenTutorial?: () => void;
   onSwipe?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onRestart?: () => void;
   onOpenHighScores?: () => void;
@@ -104,6 +104,7 @@ export default function GameMap({
   goalBanner,
   controlMode = 'arrows',
   onOpenSettings,
+  onOpenTutorial,
   onSwipe,
   onRestart,
   onOpenHighScores,
@@ -114,32 +115,29 @@ export default function GameMap({
   const timeProgress = Math.max(0, Math.min(1, timeRemaining / totalTime));
   const titleInfo = getPlayerTitleInfo(frogsSaved);
 
-  const onSwipeRef = useRef(onSwipe);
-  onSwipeRef.current = onSwipe;
-  const controlModeRef = useRef(controlMode);
-  controlModeRef.current = controlMode;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => controlModeRef.current === 'swipe',
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (controlModeRef.current !== 'swipe') return false;
-        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (controlModeRef.current !== 'swipe') return;
-        const { dx, dy } = gestureState;
-        const minSwipe = 15;
-        if (Math.abs(dx) > Math.abs(dy)) {
-          if (dx > minSwipe) onSwipeRef.current?.('right');
-          else if (dx < -minSwipe) onSwipeRef.current?.('left');
-        } else {
-          if (dy > minSwipe) onSwipeRef.current?.('down');
-          else if (dy < -minSwipe) onSwipeRef.current?.('up');
-        }
-      },
-    })
-  ).current;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => controlMode === 'swipe',
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          if (controlMode !== 'swipe') return false;
+          return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (controlMode !== 'swipe') return;
+          const { dx, dy } = gestureState;
+          const minSwipe = 15;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > minSwipe) onSwipe?.('right');
+            else if (dx < -minSwipe) onSwipe?.('left');
+          } else {
+            if (dy > minSwipe) onSwipe?.('down');
+            else if (dy < -minSwipe) onSwipe?.('up');
+          }
+        },
+      }),
+    [controlMode, onSwipe]
+  );
 
   return (
     <View style={styles.outerContainer}>
@@ -220,6 +218,17 @@ export default function GameMap({
               style={styles.hudIcon}
             />
           </TouchableOpacity>
+
+          {/* Tutorial Button */}
+          {onOpenTutorial && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={onOpenTutorial}
+              style={styles.hudButton}
+            >
+              <Text style={{ fontSize: 17 }}>📖</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Settings Button */}
           <TouchableOpacity

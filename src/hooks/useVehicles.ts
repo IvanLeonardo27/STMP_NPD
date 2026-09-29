@@ -101,7 +101,9 @@ export function useVehicles(playableWidth: number, isPaused: boolean = false) {
   );
 
   const vehiclesRef = useRef(vehicles);
-  vehiclesRef.current = vehicles;
+  useEffect(() => {
+    vehiclesRef.current = vehicles;
+  }, [vehicles]);
 
   useEffect(() => {
     if (isPaused) return;

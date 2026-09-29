@@ -193,9 +193,9 @@ export function useFrog({
     [playableWidth, isPaused]
   );
 
-  // 1. Keyboard Controls (WASD or Arrows)
+  // 1. Keyboard Controls (WASD or Arrows, Desktop Web only)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.addEventListener) return;
     if (controlMode === 'swipe') return; // Keyboard movement disabled in swipe mode
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -252,7 +252,7 @@ export function useFrog({
 
   // 2. Mouse Drag / Cursor Swipe Controls (for Desktop Web in swipe mode)
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.addEventListener) return;
     if (controlMode !== 'swipe') return;
 
     let startX = 0;

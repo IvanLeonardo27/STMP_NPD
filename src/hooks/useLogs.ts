@@ -87,7 +87,9 @@ export function useLogs(playableWidth: number, isPaused: boolean = false) {
   const [logs, setLogs] = useState<LogEntity[]>(() => buildInitialLogs(playableWidth));
 
   const logsRef = useRef(logs);
-  logsRef.current = logs;
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   useEffect(() => {
     if (isPaused) return;
