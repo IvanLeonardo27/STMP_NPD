@@ -146,11 +146,18 @@ export function useFrog({
     [playableWidth]
   );
 
+  const lastHopTimeRef = useRef<number>(0);
+
   // Movement actions
   const hop = useCallback(
     (dir: Direction) => {
+      const now = Date.now();
+      if (now - lastHopTimeRef.current < 120) return;
+
       const current = frogRef.current;
       if (current.status !== 'alive' || isPaused || isGoalCelebratingRef.current) return;
+
+      lastHopTimeRef.current = now;
 
       let nextX = current.x;
       let nextY = current.y;
@@ -248,48 +255,6 @@ export function useFrog({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hop, isPaused, controlMode]);
-
-  // 2. Mouse Drag / Cursor Swipe Controls (for Desktop Web in swipe mode)
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.addEventListener) return;
-    if (controlMode !== 'swipe') return;
-
-    let startX = 0;
-    let startY = 0;
-    let isMouseDown = false;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (isPaused) return;
-      isMouseDown = true;
-      startX = e.clientX;
-      startY = e.clientY;
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      if (!isMouseDown || isPaused) return;
-      isMouseDown = false;
-
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      const minDistance = 20;
-
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > minDistance) hop('right');
-        else if (dx < -minDistance) hop('left');
-      } else {
-        if (dy > minDistance) hop('down');
-        else if (dy < -minDistance) hop('up');
-      }
-    };
-
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
   }, [hop, isPaused, controlMode]);
 
   // Collision detection loop

@@ -115,29 +115,30 @@ export default function GameMap({
   const timeProgress = Math.max(0, Math.min(1, timeRemaining / totalTime));
   const titleInfo = getPlayerTitleInfo(frogsSaved);
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => controlMode === 'swipe',
-        onMoveShouldSetPanResponder: (_, gestureState) => {
-          if (controlMode !== 'swipe') return false;
-          return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (controlMode !== 'swipe') return;
-          const { dx, dy } = gestureState;
-          const minSwipe = 15;
-          if (Math.abs(dx) > Math.abs(dy)) {
-            if (dx > minSwipe) onSwipe?.('right');
-            else if (dx < -minSwipe) onSwipe?.('left');
-          } else {
-            if (dy > minSwipe) onSwipe?.('down');
-            else if (dy < -minSwipe) onSwipe?.('up');
-          }
-        },
-      }),
-    [controlMode, onSwipe]
-  );
+  const panResponder = useMemo(() => {
+    const handleSwipeEnd = (gestureState: { dx: number; dy: number }) => {
+      if (controlMode !== 'swipe') return;
+      const { dx, dy } = gestureState;
+      const minSwipe = 15;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > minSwipe) onSwipe?.('right');
+        else if (dx < -minSwipe) onSwipe?.('left');
+      } else {
+        if (dy > minSwipe) onSwipe?.('down');
+        else if (dy < -minSwipe) onSwipe?.('up');
+      }
+    };
+
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => controlMode === 'swipe',
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (controlMode !== 'swipe') return false;
+        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderRelease: (_, gestureState) => handleSwipeEnd(gestureState),
+      onPanResponderTerminate: (_, gestureState) => handleSwipeEnd(gestureState),
+    });
+  }, [controlMode, onSwipe]);
 
   return (
     <View style={styles.outerContainer}>
