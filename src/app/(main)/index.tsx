@@ -102,14 +102,6 @@ export default function MainHomeScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push('/game')}
-            style={styles.previewButton}
-          >
-            <Text style={styles.previewButtonText}>Preview Arena Map 🗺️</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
             onPress={() => router.push('/highscores' as any)}
             style={styles.highScoresButton}
           >
@@ -242,20 +234,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1,
-  },
-  previewButton: {
-    backgroundColor: '#272b32',
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#3c434f',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewButtonText: {
-    color: '#c9d1d9',
-    fontSize: 14,
-    fontWeight: '700',
   },
   highScoresButton: {
     backgroundColor: '#1c2128',
